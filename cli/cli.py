@@ -29,13 +29,13 @@ def geojson_to_pbf(file_path):
     pbf = geobuf_pb2.Data()
     return encode_feature_collection(pbf, geojson_data, DIMENSION, PRECISION_FACTOR)
 
-def generate_tiles_geobuf(layer_name, geobuf_path, log_path):
+def generate_tiles_geojson(layer_name, geojson_path, log_path):
     process = psutil.Process(os.getpid())
 
-    pmtiles_path = geobuf_path.split('.geobuf')[0] + '.pmtiles'
+    mbtiles_path = geojson_path.split('.geojson')[0] + '.mbtiles'
 
     start_main_time = time.time()
-    print(f"[start][{process.memory_percent():3.1f}%] generate_tiles_geobuf")
+    print(f"[start][{process.memory_percent():3.1f}%] generate_tiles_geojson")
 
     with open(log_path, "w") as log:
         log.write(f" ---- {datetime.now().isoformat()[:-3]} ---- \n")
@@ -43,7 +43,7 @@ def generate_tiles_geobuf(layer_name, geobuf_path, log_path):
         subprocess.run([
             "tippecanoe",
             "-o",
-            pmtiles_path,
+            mbtiles_path,
             "--drop-densest-as-needed",
             "--drop-fraction-as-needed",
             "--drop-smallest-as-needed",
@@ -58,21 +58,47 @@ def generate_tiles_geobuf(layer_name, geobuf_path, log_path):
             "--force",
             f"--name={layer_name}",
             f"--layer={layer_name}",
-            str(geobuf_path),
+            str(geojson_path),
         ], stdout=log, stderr=log, check=False)
-        log.write(f" ---- {datetime.now().isoformat()[:-3]} generate_tiles_geobuf: {(time.time() - start_main_time):9.4f}s ---- \n")
+        log.write(f" ---- {datetime.now().isoformat()[:-3]} generate_tiles_geojson: {(time.time() - start_main_time):9.4f}s ---- \n")
         log.flush()
 
-    print(f"[end][{process.memory_percent():3.1f}%] generate_tiles_geobuf: {(time.time() - start_main_time):9.4f}")
+    print(f"[end][{process.memory_percent():3.1f}%] generate_tiles_geojson: {(time.time() - start_main_time):9.4f}")
+    return
+
+def convert_mbtiles_to_pmtiles(geojson_path, log_path):
+    process = psutil.Process(os.getpid())
+
+    mbtiles_path = geojson_path.split('.geojson')[0] + '.mbtiles'
+    pmtiles_path = geojson_path.split('.geojson')[0] + '.pmtiles'
+
+    start_main_time = time.time()
+    print(f"[start][{process.memory_percent():3.1f}%] convert_mbtiles_to_pmtiles")
+
+    with open(log_path, "w") as log:
+        log.write(f" ---- {datetime.now().isoformat()[:-3]} ---- \n")
+        log.flush()
+        subprocess.run([
+            "pmtiles",
+            "convert",
+            mbtiles_path,
+            pmtiles_path
+        ], stdout=log, stderr=log, check=False)
+        log.write(f" ---- {datetime.now().isoformat()[:-3]} convert_mbtiles_to_pmtiles: {(time.time() - start_main_time):9.4f}s ---- \n")
+        log.flush()
+
+    print(f"[end][{process.memory_percent():3.1f}%] convert_mbtiles_to_pmtiles: {(time.time() - start_main_time):9.4f}")
     return 
 
 if __name__ == "__main__":
-    layer_name = "power_lines_high"
-    input_filename = layer_name + '.geojson'
-    input_path = os.path.join(VOLUME_PATH, input_filename)
-    output_path = os.path.join(VOLUME_PATH, input_filename.split('.geojson')[0] + '.geobuf')
-    pbf = geojson_to_pbf(input_path)
-    with open(output_path, "wb") as f:
-        f.write(pbf.SerializeToString())
-    logs_path = os.path.join(VOLUME_PATH, "logs.log")
-    generate_tiles_geobuf(layer_name, output_path, logs_path)
+    for layer_name in []:
+        input_filename = layer_name + '.geojson'
+        input_path = os.path.join(VOLUME_PATH, input_filename)
+        # output_path = os.path.join(VOLUME_PATH, input_filename.split('.geojson')[0] + '.geobuf')
+        # pbf = geojson_to_pbf(input_path)
+        # with open(output_path, "wb") as f:
+        #     f.write(pbf.SerializeToString())
+        logs_path = os.path.join(VOLUME_PATH, "logs_tippecanoe.log")
+        generate_tiles_geojson(layer_name, input_path, logs_path)
+        logs_path = os.path.join(VOLUME_PATH, "logs_pmtiles.log")
+        convert_mbtiles_to_pmtiles(input_path, logs_path)

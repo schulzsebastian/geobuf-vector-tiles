@@ -11,3 +11,13 @@ services:
     volumes:
       - ./cli:/cli
       - ${VOLUME_PATH}:/volume
+  nginx:
+    restart: always
+    container_name: nginx
+    build:
+      context: ./
+      dockerfile: ./nginx/Dockerfile
+    ports:
+      - 5000:80
+    volumes:
+      - ${VOLUME_PATH}:/data
